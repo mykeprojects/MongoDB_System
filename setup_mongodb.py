@@ -348,37 +348,45 @@ def get_validator(collection_name: str) -> dict:
         "notificaciones": {
             "bsonType": "object",
             "required": [
-                "vendedorId", "tipo", "titulo", "mensaje", "leida", "referencia", "datos",
-                "leidaEn", "expiraEn", "schemaVersion", "creadoEn", "actualizadoEn"
+                "destinatarioId", "destinatarioTipo", "tipo", "titulo", "mensaje", "leida",
+                "schemaVersion", "creadoEn", "actualizadoEn"
             ],
             "properties": {
                 "_id": {"bsonType": "objectId"},
-                "vendedorId": {"bsonType": "objectId"},
-                "tipo": {"bsonType": "string"},
+                "destinatarioId": {"bsonType": "objectId"},
+                "destinatarioTipo": {
+                    "bsonType": "string",
+                    "enum": ["usuario", "vendedor"]
+                },
+                "tipo": {
+                    "bsonType": "string",
+                    "enum": [
+                        "nueva_orden", "orden_actualizada", "envio_iniciado", "paquete_entregado",
+                        "reembolso_procesado", "mensaje_vendedor", "promocion", "revision_producto", "otro"
+                    ]
+                },
                 "titulo": {"bsonType": "string"},
                 "mensaje": {"bsonType": "string"},
                 "leida": {"bsonType": "bool"},
                 "referencia": {
                     "bsonType": "object",
-                    "required": ["tipo", "id"],
                     "properties": {
-                        "tipo": {"bsonType": "string"},
+                        "tipo": {"bsonType": "string", "enum": ["orden", "producto", "consulta", "otro"]},
                         "id": {"bsonType": "objectId"}
                     }
                 },
                 "datos": {
                     "bsonType": "object",
-                    "required": ["numeroOrden", "monto", "cantidadProductos", "estadoAnterior", "estadoNuevo"],
                     "properties": {
                         "numeroOrden": {"bsonType": "string"},
-                        "monto": {"bsonType": ["int", "long", "double", "decimal"], "minimum": 0},
+                        "estadoOrden": {"bsonType": "string"},
                         "cantidadProductos": {"bsonType": ["int", "long", "double", "decimal"], "minimum": 0},
                         "estadoAnterior": {"bsonType": "string"},
-                        "estadoNuevo": {"bsonType": "string"}
+                        "estadoNuevo": {"bsonType": "string"},
+                        "monto": {"bsonType": ["int", "long", "double", "decimal"], "minimum": 0},
                     }
                 },
                 "leidaEn": {"bsonType": ["date", "null"]},
-                "expiraEn": {"bsonType": "date"},
                 **base_common_properties
             }
         }
@@ -485,9 +493,14 @@ def create_indexes():
     db.consultas.create_index("vendedorId")
 
     # Notificaciones
-    db.notificaciones.create_index([("vendedorId", ASCENDING), ("creadoEn", DESCENDING)], name="idx_notificaciones_vendedor_creadoEn")
+    db.notificaciones.create_index(
+        [("destinatarioTipo", ASCENDING), ("destinatarioId", ASCENDING), ("creadoEn", DESCENDING)],
+        name="idx_notificaciones_destinatario_creadoEn"
+    )
+    db.notificaciones.create_index("destinatarioId")
+    db.notificaciones.create_index("destinatarioTipo")
+    db.notificaciones.create_index("tipo")
     db.notificaciones.create_index("leida")
-    db.notificaciones.create_index("expiraEn")
     db.notificaciones.create_index("referencia.id")
 
     logger.info("Todos los índices creados (o ya existían)")
