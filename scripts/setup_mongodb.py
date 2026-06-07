@@ -43,7 +43,7 @@ def get_validator(collection_name: str) -> dict:
             "bsonType": "object",
             "required": [
                 "email", "nombre", "apellido", "telefono", "direccion", "carrito",
-                "roles", "vendedorId", "nomativasAceptadas", "schemaVersion", "creadoEn", "actualizadoEn"
+                "roles", "vendedorId", "normativasAceptadas", "schemaVersion", "creadoEn", "actualizadoEn"
             ],
             "properties": {
                 "_id": {"bsonType": "objectId"},
@@ -54,7 +54,7 @@ def get_validator(collection_name: str) -> dict:
                 },
                 "nombre": {"bsonType": "string", "minLength": 2, "maxLength": 120},
                 "apellido": {"bsonType": "string", "minLength": 2, "maxLength": 120},
-                "telefono": {"bsonType": "bool"},
+                "telefono": {"bsonType": "string", "pattern": "^\\+?[1-9]\\d{7,14}$"},
                 "direccion": {
                     "bsonType": "object",
                     "required": ["departamento", "ciudad", "direccion", "codigoPostal"],
@@ -88,7 +88,7 @@ def get_validator(collection_name: str) -> dict:
                     "items": {"bsonType": "string"}
                 },
                 "vendedorId": {"bsonType": "objectId"},
-                "nomativasAceptadas": {
+                "normativasAceptadas": {
                     "bsonType": "array",
                     "items": {
                         "bsonType": "object",
