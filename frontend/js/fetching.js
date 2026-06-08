@@ -9,6 +9,15 @@ const API_CONFIG = {
   },
 };
 
+// Enable debug logging
+const DEBUG = true;
+
+function debugLog(...args) {
+  if (DEBUG) {
+    console.log("[RAG DEBUG]", ...args);
+  }
+}
+
 /**
  * Convierte una ruta de imagen del servidor en una URL cargable por el navegador.
  *
@@ -61,6 +70,9 @@ function normalizeChatResponse(data) {
 async function sendChatMessage(payload) {
   const url = `${API_CONFIG.baseUrl}${API_CONFIG.endpoints.chat}`;
 
+  debugLog(`Sending request to: ${url}`);
+  debugLog(`Payload:`, payload);
+
   const response = await fetch(url, {
     method: "POST",
     headers: {
@@ -72,13 +84,17 @@ async function sendChatMessage(payload) {
     }),
   });
 
+  debugLog(`Response status: ${response.status}`);
+
   if (!response.ok) {
     const errorText = await response.text().catch(() => "");
+    debugLog(`Error response: ${errorText}`);
     throw new Error(
       errorText || `Error del servidor (${response.status})`
     );
   }
 
   const data = await response.json();
+  debugLog(`Response data:`, data);
   return normalizeChatResponse(data);
 }

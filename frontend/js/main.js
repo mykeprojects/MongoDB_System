@@ -58,17 +58,28 @@
     resetInputImage();
 
     showResponse("Esperando respuesta del servidor...", true);
+    debugLog("Sending message...", { message, imagePath });
 
     try {
       const data = await sendChatMessage({ message, imagePath });
+      debugLog("Got response from server:", data);
 
       appendMessage("assistant", data.response, data.imagePath);
       showResponse(data.response, false, false, data.imagePath);
     } catch (error) {
+      debugLog("Error:", error);
       const errorMsg =
         error.message ||
         "No se pudo conectar con el servidor. Verifica que el endpoint esté activo.";
       showResponse(errorMsg, false, true);
+      
+      // Log error details for debugging
+      console.error("Chat error details:", {
+        errorMessage: error.message,
+        errorStack: error.stack,
+        backendUrl: API_CONFIG.baseUrl,
+        endpoint: API_CONFIG.endpoints.chat
+      });
     } finally {
       userInputEl.value = "";
       setLoading(false);
