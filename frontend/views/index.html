@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Chat — Bases NoSQL</title>
+  <link rel="stylesheet" href="../css/index.css">
+</head>
+<body>
+  <div class="chat-app">
+    <header class="chat-header">
+      <h1>Asistente</h1>
+      <p class="chat-subtitle">Escribe una pregunta o adjunta una imagen</p>
+    </header>
+
+    <main class="chat-main">
+      <section id="messages" class="messages" aria-live="polite">
+        <div class="messages-empty" id="messages-empty">
+          <span>Aún no hay mensajes. Envía tu primera pregunta.</span>
+        </div>
+      </section>
+
+      <section id="response-panel" class="response-panel hidden" aria-live="polite">
+        <div class="response-label">Respuesta</div>
+        <div id="response-content" class="response-content"></div>
+      </section>
+    </main>
+
+    <footer class="chat-input-area">
+      <div id="image-preview" class="image-preview hidden">
+        <img id="preview-img" src="" alt="Vista previa de imagen">
+        <button type="button" id="remove-image-btn" class="remove-image-btn" title="Quitar imagen" aria-label="Quitar imagen">
+          &times;
+        </button>
+        <span id="image-path-label" class="image-path-label"></span>
+      </div>
+
+      <div class="input-row">
+        <textarea
+          id="user-input"
+          class="user-input"
+          placeholder="Escribe tu pregunta aquí..."
+          rows="3"
+          aria-label="Mensaje del usuario"
+        ></textarea>
+      </div>
+
+      <div class="input-actions">
+        <input type="file" id="image-input" accept="image/*" hidden>
+        <button type="button" id="attach-btn" class="btn btn-secondary">
+          <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+            <rect x="3" y="3" width="18" height="18" rx="2"/>
+            <circle cx="8.5" cy="8.5" r="1.5"/>
+            <path d="M21 15l-5-5L5 21"/>
+          </svg>
+          Imagen
+        </button>
+        <button type="button" id="send-btn" class="btn btn-primary">
+          <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+            <path d="M22 2L11 13"/>
+            <path d="M22 2L15 22L11 13L2 9L22 2Z"/>
+          </svg>
+          Enviar
+        </button>
+      </div>
+    </footer>
+  </div>
+
+  <script src="../js/fetching.js"></script>
+  <script src="../js/main.js"></script>
+</body>
+</html>
