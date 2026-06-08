@@ -313,21 +313,46 @@ def get_validator(collection_name: str) -> dict:
                 **base_common_properties
             }
         },
-        "embeddings": {
+        "embedding_normatividad": {
             "bsonType": "object",
-            "required": ["fuente", "texto", "embedding", "activo", "schemaVersion", "creadoEn", "actualizadoEn"],
+            "required": [
+                "normatividadId", "titulo", "texto", "embedding", "estrategiaChunking",
+                "chunkIndex", "activo", "schemaVersion", "creadoEn", "actualizadoEn"
+            ],
             "properties": {
                 "_id": {"bsonType": "objectId"},
-                "fuente": {"bsonType": "string", "enum": ["normatividad", "producto", "categoria"]},
-                "normatividadId": {"bsonType": ["objectId", "null"]},
-                "productoId": {"bsonType": ["objectId", "null"]},
-                "categoriaId": {"bsonType": ["objectId", "null"]},
+                "normatividadId": {"bsonType": "objectId"},
+                "titulo": {"bsonType": "string", "minLength": 3, "maxLength": 200},
                 "texto": {"bsonType": "string", "minLength": 10},
                 "embedding": {
                     "bsonType": "array",
                     "minItems": 1,
                     "items": {"bsonType": "double"}
                 },
+                "estrategiaChunking": {"bsonType": "string", "enum": ["frases", "semantico"]},
+                "chunkIndex": {"bsonType": ["int", "long"], "minimum": 0},
+                "activo": {"bsonType": "bool"},
+                **base_common_properties
+            }
+        },
+        "embedding_productos": {
+            "bsonType": "object",
+            "required": [
+                "productoId", "titulo", "texto", "embedding", "estrategiaChunking",
+                "chunkIndex", "activo", "schemaVersion", "creadoEn", "actualizadoEn"
+            ],
+            "properties": {
+                "_id": {"bsonType": "objectId"},
+                "productoId": {"bsonType": "objectId"},
+                "titulo": {"bsonType": "string", "minLength": 3, "maxLength": 200},
+                "texto": {"bsonType": "string", "minLength": 10},
+                "embedding": {
+                    "bsonType": "array",
+                    "minItems": 1,
+                    "items": {"bsonType": "double"}
+                },
+                "estrategiaChunking": {"bsonType": "string", "enum": ["frases", "semantico"]},
+                "chunkIndex": {"bsonType": ["int", "long"], "minimum": 0},
                 "activo": {"bsonType": "bool"},
                 **base_common_properties
             }
@@ -400,7 +425,8 @@ def get_validator(collection_name: str) -> dict:
 # ====================== CREACIÓN DE COLECCIONES CON VALIDATOR ======================
 collections = [
     "usuarios", "vendedores", "productos", "categorias", "ordenes",
-    "resenas", "transacciones", "normatividades", "embeddings", "consultas", "notificaciones"
+    "resenas", "transacciones", "normatividades", "embedding_normatividad",
+    "embedding_productos", "consultas", "notificaciones"
 ]
 
 for coll_name in collections:
@@ -476,15 +502,24 @@ def create_indexes():
     db.normatividades.create_index("activo")
     db.normatividades.create_index("fechaPublicacion")
 
-    # Embeddings (importante para Vector Search)
-    db.embeddings.create_index([("fuente", ASCENDING), ("activo", ASCENDING)])
-    db.embeddings.create_index("normatividadId")
-    db.embeddings.create_index("productoId")
-    db.embeddings.create_index("categoriaId")
-    db.embeddings.create_index([("fuente", ASCENDING), ("normatividadId", ASCENDING)], name="idx_embedding_fuente_normatividad")
-    db.embeddings.create_index([("fuente", ASCENDING), ("productoId", ASCENDING)], name="idx_embedding_fuente_producto")
-    db.embeddings.create_index([("fuente", ASCENDING), ("categoriaId", ASCENDING)], name="idx_embedding_fuente_categoria")
-    
+    # Embeddings de normatividad (importante para Vector Search)
+    db.embedding_normatividad.create_index("normatividadId")
+    db.embedding_normatividad.create_index([("normatividadId", ASCENDING), ("activo", ASCENDING)])
+    db.embedding_normatividad.create_index("estrategiaChunking")
+    db.embedding_normatividad.create_index(
+        [("normatividadId", ASCENDING), ("estrategiaChunking", ASCENDING), ("chunkIndex", ASCENDING)],
+        name="idx_embedding_normatividad_estrategia_chunk"
+    )
+
+    # Embeddings de productos (importante para Vector Search)
+    db.embedding_productos.create_index("productoId")
+    db.embedding_productos.create_index([("productoId", ASCENDING), ("activo", ASCENDING)])
+    db.embedding_productos.create_index("estrategiaChunking")
+    db.embedding_productos.create_index(
+        [("productoId", ASCENDING), ("estrategiaChunking", ASCENDING), ("chunkIndex", ASCENDING)],
+        name="idx_embedding_producto_estrategia_chunk"
+    )
+
     # Nota: El índice Vector Search se recomienda crearlo desde Atlas UI o con db.command()
 
     # Consultas
@@ -512,10 +547,8 @@ def main() -> None:
         logger.info("Base de datos: %s", DATABASE_NAME)
         logger.info("Colecciones creadas/actualizadas con validación e índices")
         logger.info(
-            "Regla de validación cruzada recomendada en embeddings: "
-            "si fuente=producto -> productoId obligatorio; "
-            "si fuente=normatividad -> normatividadId obligatorio; "
-            "si fuente=categoria -> categoriaId obligatorio"
+            "Colecciones de embeddings separadas: "
+            "embedding_normatividad (normatividadId) y embedding_productos (productoId)"
         )
     except ConnectionFailure as exc:
         logger.error("No se pudo conectar a MongoDB: %s", exc)

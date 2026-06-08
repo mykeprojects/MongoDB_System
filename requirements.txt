@@ -2,3 +2,6 @@ dnspython==2.8.0
 pymongo==4.17.0
 python-dotenv==1.2.2
 Faker==37.11.0
+pypdf==5.4.0
+sentence-transformers==4.1.0
+numpy==2.2.5

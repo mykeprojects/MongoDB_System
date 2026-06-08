@@ -43,7 +43,8 @@ COLLECTIONS = [
     "ordenes",
     "resenas",
     "transacciones",
-    "embeddings",
+    "embedding_normatividad",
+    "embedding_productos",
     "consultas",
     "notificaciones",
 ]
@@ -124,7 +125,7 @@ def common_fields(created_at: datetime | None = None) -> dict[str, Any]:
     }
 
 
-def make_embedding(size: int = 16) -> list[float]:
+def make_embedding(size: int = 384) -> list[float]:
     return [round(random.uniform(-1, 1), 6) for _ in range(size)]
 
 
@@ -420,50 +421,37 @@ def build_resenas(
     return docs
 
 
-def build_embeddings(
-    normatividades: list[dict[str, Any]],
-    categorias: list[dict[str, Any]],
-    productos: list[dict[str, Any]],
-) -> list[dict[str, Any]]:
+def build_embeddings_normatividad(normatividades: list[dict[str, Any]]) -> list[dict[str, Any]]:
     docs = []
-    for norma in normatividades:
+    for index, norma in enumerate(normatividades):
         docs.append(
             {
                 "_id": ObjectId(),
-                "fuente": "normatividad",
                 "normatividadId": norma["_id"],
-                "productoId": None,
-                "categoriaId": None,
+                "titulo": norma["titulo"],
                 "texto": norma["contenido"],
                 "embedding": make_embedding(),
+                "estrategiaChunking": "frases" if index % 2 == 0 else "semantico",
+                "chunkIndex": 0,
                 "activo": True,
                 **common_fields(norma["creadoEn"]),
             }
         )
-    for categoria in categorias:
+    return docs
+
+
+def build_embeddings_productos(productos: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    docs = []
+    for index, producto in enumerate(productos):
         docs.append(
             {
                 "_id": ObjectId(),
-                "fuente": "categoria",
-                "normatividadId": None,
-                "productoId": None,
-                "categoriaId": categoria["_id"],
-                "texto": categoria["descripcion"],
-                "embedding": make_embedding(),
-                "activo": True,
-                **common_fields(categoria["creadoEn"]),
-            }
-        )
-    for producto in productos:
-        docs.append(
-            {
-                "_id": ObjectId(),
-                "fuente": "producto",
-                "normatividadId": None,
                 "productoId": producto["_id"],
-                "categoriaId": None,
+                "titulo": producto["nombre"],
                 "texto": f"{producto['nombre']}. {producto['descripcion']}",
                 "embedding": make_embedding(),
+                "estrategiaChunking": "frases" if index % 2 == 0 else "semantico",
+                "chunkIndex": 0,
                 "activo": True,
                 **common_fields(producto["creadoEn"]),
             }
@@ -564,7 +552,8 @@ def ingest_database() -> None:
         ordenes = build_ordenes(usuarios, productos, normatividades)
         transacciones = build_transacciones(batch, ordenes)
         resenas = build_resenas(usuarios, productos)
-        embeddings = build_embeddings(normatividades, categorias, productos)
+        embeddings_normatividad = build_embeddings_normatividad(normatividades)
+        embeddings_productos = build_embeddings_productos(productos)
         consultas = build_consultas(usuarios, vendedores)
         notificaciones = build_notificaciones(usuarios, vendedores, ordenes, productos)
 
@@ -576,7 +565,8 @@ def ingest_database() -> None:
         insert_many(db, "ordenes", ordenes)
         insert_many(db, "transacciones", transacciones)
         insert_many(db, "resenas", resenas)
-        insert_many(db, "embeddings", embeddings)
+        insert_many(db, "embedding_normatividad", embeddings_normatividad)
+        insert_many(db, "embedding_productos", embeddings_productos)
         insert_many(db, "consultas", consultas)
         insert_many(db, "notificaciones", notificaciones)
 
