@@ -6,9 +6,11 @@ from backend.controllers.chatController import chat_blueprint
 from backend.services.chat_service import ChatService
 from backend.services.config_service import DATA_DIR, load_config
 from backend.services.database_service import DatabaseService
+from backend.services.clip_embedding_service import ClipEmbeddingService
 from backend.services.embedding_service import EmbeddingService
 from backend.services.image_service import ImageService
 from backend.services.llm_service import LLMService
+from backend.services.multimodal_retrieval_service import MultimodalRetrievalService
 from backend.services.retrieval_service import RetrievalService
 
 # Configure logging
@@ -34,9 +36,15 @@ def create_app() -> Flask:
         
         embeddings = EmbeddingService(config.embedding_model)
         logger.info("✓ EmbeddingService initialized")
+
+        clip_embeddings = ClipEmbeddingService(config.clip_model)
+        logger.info("✓ ClipEmbeddingService initialized")
         
         retrieval = RetrievalService(database, embeddings, config)
         logger.info("✓ RetrievalService initialized")
+
+        multimodal = MultimodalRetrievalService(database, embeddings, clip_embeddings, config)
+        logger.info("✓ MultimodalRetrievalService initialized")
         
         images = ImageService()
         logger.info("✓ ImageService initialized")
@@ -44,7 +52,7 @@ def create_app() -> Flask:
         llm = LLMService(config)
         logger.info("✓ LLMService initialized")
         
-        chat_service = ChatService(config, retrieval, llm, images)
+        chat_service = ChatService(config, retrieval, multimodal, llm, images)
         logger.info("✓ ChatService initialized")
         
     except Exception as e:

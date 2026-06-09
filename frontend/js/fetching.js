@@ -43,7 +43,7 @@ function resolveImageUrl(imagePath) {
  * Normaliza la respuesta del servidor a un formato consistente.
  *
  * @param {Record<string, unknown>} data
- * @returns {{ response: string, imagePath: string|null }}
+ * @returns {{ response: string, imagePath: string|null, mode: string|null }}
  */
 function normalizeChatResponse(data) {
   const response =
@@ -58,14 +58,15 @@ function normalizeChatResponse(data) {
       ? data.imagePath.trim()
       : null;
 
-  return { response, imagePath };
+  const mode = typeof data.mode === "string" ? data.mode : null;
+  return { response, imagePath, mode };
 }
 
 /**
  * Envía un mensaje y/o la ruta de una imagen al servidor.
  *
- * @param {{ message: string, imagePath: string|null }} payload
- * @returns {Promise<{ response: string, imagePath: string|null }>}
+ * @param {{ message: string, imagePath: string|null, wantImageResponse?: boolean }} payload
+ * @returns {Promise<{ response: string, imagePath: string|null, mode?: string }>}
  */
 async function sendChatMessage(payload) {
   const url = `${API_CONFIG.baseUrl}${API_CONFIG.endpoints.chat}`;
@@ -81,6 +82,7 @@ async function sendChatMessage(payload) {
     body: JSON.stringify({
       message: payload.message || "",
       imagePath: payload.imagePath || null,
+      wantImageResponse: Boolean(payload.wantImageResponse),
     }),
   });
 

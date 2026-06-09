@@ -45,5 +45,8 @@ def health():
             "retrievalLimit": config.retrieval_limit,
             "retrievalStrategy": config.retrieval_strategy,
             "vectorIndex": config.vector_index_name,
+            "multimodalTextIndex": config.multimodal_text_index,
+            "multimodalClipTextIndex": config.multimodal_clip_text_index,
+            "multimodalClipImageIndex": config.multimodal_clip_image_index,
         }
     ), 200

@@ -177,6 +177,19 @@ body {
   display: none;
 }
 
+.mode-badge {
+  display: inline-block;
+  margin-bottom: 0.5rem;
+  padding: 0.2rem 0.55rem;
+  border-radius: 999px;
+  background: rgba(91, 124, 250, 0.15);
+  color: var(--primary);
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
 .response-label {
   padding: 0.5rem 1rem;
   font-size: 0.7rem;
@@ -310,7 +323,32 @@ body {
 .input-actions {
   display: flex;
   gap: 0.5rem;
+  align-items: center;
   justify-content: flex-end;
+}
+
+.toggle-image-response {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  margin-right: auto;
+  padding: 0.45rem 0.65rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text-muted);
+  font-size: 0.82rem;
+  cursor: pointer;
+  user-select: none;
+  transition: border-color 0.15s, color 0.15s, background 0.15s;
+}
+
+.toggle-image-response:hover {
+  color: var(--text);
+  border-color: var(--primary);
+}
+
+.toggle-image-response input {
+  accent-color: var(--primary);
 }
 
 .btn {

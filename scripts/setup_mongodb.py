@@ -16,7 +16,11 @@ logger = logging.getLogger("mongodb_setup")
 MONGO_URI = os.getenv("MONGO_URI")
 DATABASE_NAME = os.getenv("DATABASE_NAME")
 EMBEDDING_DIMENSIONS = int(os.getenv("EMBEDDING_DIMENSIONS", "384"))
+CLIP_EMBEDDING_DIMENSIONS = int(os.getenv("CLIP_EMBEDDING_DIMENSIONS", "512"))
 VECTOR_INDEX_NAME = os.getenv("MONGO_VECTOR_INDEX", "embedding_vector_index")
+MULTIMODAL_TEXT_INDEX = os.getenv("MONGO_MULTIMODAL_TEXT_INDEX", "idx_text_minilm_384")
+MULTIMODAL_CLIP_TEXT_INDEX = os.getenv("MONGO_MULTIMODAL_CLIP_TEXT_INDEX", "idx_clip_text_512")
+MULTIMODAL_CLIP_IMAGE_INDEX = os.getenv("MONGO_MULTIMODAL_CLIP_IMAGE_INDEX", "idx_clip_image_512")
 
 if not MONGO_URI or not DATABASE_NAME:
     raise ValueError("Las variables MONGO_URI y DATABASE_NAME deben estar definidas en el archivo .env")
@@ -372,6 +376,43 @@ def get_validator(collection_name: str) -> dict:
                 **base_common_properties
             }
         },
+        "embedding_multimodal": {
+            "bsonType": "object",
+            "required": [
+                "imagenId", "nombreArchivo", "rutaImagen", "descripcion", "categoria",
+                "embeddingImagen", "embeddingTextoClip", "embeddingTexto",
+                "activo", "schemaVersion", "creadoEn", "actualizadoEn"
+            ],
+            "properties": {
+                "_id": {"bsonType": "objectId"},
+                "imagenId": {"bsonType": "string", "minLength": 3, "maxLength": 120},
+                "nombreArchivo": {"bsonType": "string", "minLength": 3, "maxLength": 200},
+                "rutaImagen": {"bsonType": "string", "minLength": 5},
+                "descripcion": {"bsonType": "string", "minLength": 10},
+                "etiquetas": {
+                    "bsonType": "array",
+                    "items": {"bsonType": "string"}
+                },
+                "categoria": {"bsonType": "string", "enum": ["tenis", "tecnologia"]},
+                "embeddingImagen": {
+                    "bsonType": "array",
+                    "minItems": 1,
+                    "items": {"bsonType": "double"}
+                },
+                "embeddingTextoClip": {
+                    "bsonType": "array",
+                    "minItems": 1,
+                    "items": {"bsonType": "double"}
+                },
+                "embeddingTexto": {
+                    "bsonType": "array",
+                    "minItems": 1,
+                    "items": {"bsonType": "double"}
+                },
+                "activo": {"bsonType": "bool"},
+                **base_common_properties
+            }
+        },
         "notificaciones": {
             "bsonType": "object",
             "required": [
@@ -428,7 +469,7 @@ def get_validator(collection_name: str) -> dict:
 collections = [
     "usuarios", "vendedores", "productos", "categorias", "ordenes",
     "resenas", "transacciones", "normatividades", "embedding_normatividad",
-    "embedding_productos", "consultas", "notificaciones"
+    "embedding_productos", "embedding_multimodal", "consultas", "notificaciones"
 ]
 
 for coll_name in collections:
@@ -522,7 +563,14 @@ def create_indexes():
         name="idx_embedding_producto_estrategia_chunk"
     )
 
-    # Nota: El índice Vector Search se crea con create_vector_search_indexes()
+    # Embeddings multimodales (imágenes + texto asociado)
+    db.embedding_multimodal.create_index("imagenId", unique=True, name="idx_imagenId_unique")
+    db.embedding_multimodal.create_index("nombreArchivo")
+    db.embedding_multimodal.create_index("categoria")
+    db.embedding_multimodal.create_index([("categoria", ASCENDING), ("activo", ASCENDING)])
+    db.embedding_multimodal.create_index("activo")
+
+    # Nota: Los índices Vector Search se crean con create_vector_search_indexes()
 
     # Consultas
     db.consultas.create_index([("usuarioId", ASCENDING), ("creadoEn", DESCENDING)])
@@ -593,16 +641,90 @@ def create_vector_search_indexes() -> None:
                 )
 
 
+def create_multimodal_vector_search_indexes() -> None:
+    """Crea índices de Atlas Vector Search para la colección embedding_multimodal."""
+    multimodal_indexes = [
+        {
+            "name": MULTIMODAL_TEXT_INDEX,
+            "type": "vectorSearch",
+            "definition": {
+                "fields": [
+                    {
+                        "type": "vector",
+                        "path": "embeddingTexto",
+                        "numDimensions": EMBEDDING_DIMENSIONS,
+                        "similarity": "cosine",
+                    },
+                    {"type": "filter", "path": "activo"},
+                    {"type": "filter", "path": "categoria"},
+                ]
+            },
+        },
+        {
+            "name": MULTIMODAL_CLIP_TEXT_INDEX,
+            "type": "vectorSearch",
+            "definition": {
+                "fields": [
+                    {
+                        "type": "vector",
+                        "path": "embeddingTextoClip",
+                        "numDimensions": CLIP_EMBEDDING_DIMENSIONS,
+                        "similarity": "cosine",
+                    },
+                    {"type": "filter", "path": "activo"},
+                ]
+            },
+        },
+        {
+            "name": MULTIMODAL_CLIP_IMAGE_INDEX,
+            "type": "vectorSearch",
+            "definition": {
+                "fields": [
+                    {
+                        "type": "vector",
+                        "path": "embeddingImagen",
+                        "numDimensions": CLIP_EMBEDDING_DIMENSIONS,
+                        "similarity": "cosine",
+                    },
+                    {"type": "filter", "path": "activo"},
+                    {"type": "filter", "path": "categoria"},
+                ]
+            },
+        },
+    ]
+
+    try:
+        db.command(
+            {
+                "createSearchIndexes": "embedding_multimodal",
+                "indexes": multimodal_indexes,
+            }
+        )
+        logger.info(
+            "Indices vector search multimodales creados o actualizados en embedding_multimodal"
+        )
+    except OperationFailure as exc:
+        message = str(exc).lower()
+        if "already exists" in message or getattr(exc, "code", None) in {68, 11000}:
+            logger.info("Indices vector search multimodales ya existen en embedding_multimodal")
+        else:
+            logger.warning(
+                "No se pudieron crear indices vector search multimodales: %s",
+                exc,
+            )
+
+
 def main() -> None:
     try:
         create_indexes()
         create_vector_search_indexes()
+        create_multimodal_vector_search_indexes()
         logger.info("Setup completado exitosamente")
         logger.info("Base de datos: %s", DATABASE_NAME)
         logger.info("Colecciones creadas/actualizadas con validación e índices")
         logger.info(
-            "Colecciones de embeddings separadas: "
-            "embedding_normatividad (normatividadId) y embedding_productos (productoId)"
+            "Colecciones de embeddings: embedding_normatividad, embedding_productos, "
+            "embedding_multimodal (imagenes + texto)"
         )
     except ConnectionFailure as exc:
         logger.error("No se pudo conectar a MongoDB: %s", exc)

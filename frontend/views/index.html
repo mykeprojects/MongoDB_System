@@ -10,7 +10,7 @@
   <div class="chat-app">
     <header class="chat-header">
       <h1>Asistente</h1>
-      <p class="chat-subtitle">Escribe una pregunta o adjunta una imagen</p>
+      <p class="chat-subtitle">Consultas texto-texto, texto-imagen, imagen-texto e imagen-imagen</p>
     </header>
 
     <main class="chat-main">
@@ -47,6 +47,10 @@
 
       <div class="input-actions">
         <input type="file" id="image-input" accept="image/*" hidden>
+        <label class="toggle-image-response" title="Activa búsqueda que devuelve imágenes (texto-imagen o imagen-imagen)">
+          <input type="checkbox" id="want-image-response">
+          <span>Respuesta con imagen</span>
+        </label>
         <button type="button" id="attach-btn" class="btn btn-secondary">
           <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
             <rect x="3" y="3" width="18" height="18" rx="2"/>

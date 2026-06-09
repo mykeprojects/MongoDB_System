@@ -32,3 +32,14 @@ class ImageMatch:
     path: str
     title: str
     score: float
+
+
+@dataclass
+class MultimodalHit:
+    imagen_id: str
+    nombre_archivo: str
+    ruta_imagen: str
+    descripcion: str
+    categoria: str
+    etiquetas: list[str]
+    score: float

@@ -11,6 +11,7 @@
   const previewImgEl = document.getElementById("preview-img");
   const imagePathLabelEl = document.getElementById("image-path-label");
   const removeImageBtnEl = document.getElementById("remove-image-btn");
+  const wantImageResponseEl = document.getElementById("want-image-response");
 
   let selectedImagePath = null;
   let previewObjectUrl = null;
@@ -48,6 +49,7 @@
   async function handleSend() {
     const message = userInputEl.value.trim();
     const imagePath = selectedImagePath;
+    const wantImageResponse = wantImageResponseEl.checked;
 
     if (!message && !imagePath) return;
 
@@ -58,14 +60,14 @@
     resetInputImage();
 
     showResponse("Esperando respuesta del servidor...", true);
-    debugLog("Sending message...", { message, imagePath });
+    debugLog("Sending message...", { message, imagePath, wantImageResponse });
 
     try {
-      const data = await sendChatMessage({ message, imagePath });
+      const data = await sendChatMessage({ message, imagePath, wantImageResponse });
       debugLog("Got response from server:", data);
 
       appendMessage("assistant", data.response, data.imagePath);
-      showResponse(data.response, false, false, data.imagePath);
+      showResponse(data.response, false, false, data.imagePath, data.mode);
     } catch (error) {
       debugLog("Error:", error);
       const errorMsg =
@@ -133,11 +135,18 @@
     return img;
   }
 
-  function showResponse(text, isLoading = false, isError = false, imagePath = null) {
+  function showResponse(text, isLoading = false, isError = false, imagePath = null, mode = null) {
     responsePanelEl.classList.remove("hidden");
     responseContentEl.replaceChildren();
     responseContentEl.classList.toggle("loading", isLoading);
     responseContentEl.classList.toggle("error", isError);
+
+    if (mode && !isLoading && !isError) {
+      const modeBadge = document.createElement("span");
+      modeBadge.className = "mode-badge";
+      modeBadge.textContent = mode;
+      responseContentEl.appendChild(modeBadge);
+    }
 
     if (text) {
       responseContentEl.appendChild(document.createTextNode(text));
@@ -161,6 +170,7 @@
   function setLoading(loading) {
     sendBtnEl.disabled = loading;
     attachBtnEl.disabled = loading;
+    wantImageResponseEl.disabled = loading;
     userInputEl.disabled = loading;
   }
 

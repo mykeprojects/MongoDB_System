@@ -6,16 +6,21 @@ from typing import Any
 class ChatRequestDTO:
     message: str = ""
     image_path: str | None = None
+    want_image_response: bool = False
 
     @classmethod
     def from_payload(cls, payload: dict[str, Any] | None) -> "ChatRequestDTO":
         payload = payload or {}
         message = payload.get("message") or ""
         image_path = payload.get("imagePath") or payload.get("image_path")
+        want_image_response = payload.get("wantImageResponse")
+        if want_image_response is None:
+            want_image_response = payload.get("want_image_response")
 
         return cls(
             message=str(message).strip(),
             image_path=str(image_path).strip() if image_path else None,
+            want_image_response=bool(want_image_response),
         )
 
     def validate(self) -> None:
