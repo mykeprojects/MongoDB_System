@@ -9,11 +9,10 @@
   const sendBtnEl = document.getElementById("send-btn");
   const imagePreviewEl = document.getElementById("image-preview");
   const previewImgEl = document.getElementById("preview-img");
-  const imagePathLabelEl = document.getElementById("image-path-label");
+  const imagePathInputEl = document.getElementById("image-path-input");
   const removeImageBtnEl = document.getElementById("remove-image-btn");
   const wantImageResponseEl = document.getElementById("want-image-response");
 
-  let selectedImagePath = null;
   let previewObjectUrl = null;
 
   attachBtnEl.addEventListener("click", () => imageInputEl.click());
@@ -24,11 +23,10 @@
 
     clearImagePreview();
 
-    selectedImagePath = `data/images/${file.name}`;
     previewObjectUrl = URL.createObjectURL(file);
 
     previewImgEl.src = previewObjectUrl;
-    imagePathLabelEl.textContent = selectedImagePath;
+    imagePathInputEl.value = file.name;
     imagePreviewEl.classList.remove("hidden");
   });
 
@@ -48,7 +46,7 @@
 
   async function handleSend() {
     const message = userInputEl.value.trim();
-    const imagePath = selectedImagePath;
+    const imagePath = imagePathInputEl.value.trim();
     const wantImageResponse = wantImageResponseEl.checked;
 
     if (!message && !imagePath) return;
@@ -183,9 +181,8 @@
 
   function resetInputImage() {
     previewObjectUrl = null;
-    selectedImagePath = null;
     previewImgEl.src = "";
-    imagePathLabelEl.textContent = "";
+    imagePathInputEl.value = "";
     imagePreviewEl.classList.add("hidden");
     imageInputEl.value = "";
   }

@@ -55,7 +55,7 @@ class ClipEmbeddingService:
 
     def encode_image_path(self, image_path: str) -> np.ndarray:
         path = Path(image_path)
-        if not path.is_absolute():
+        if not path.is_absolute() and not path.exists():
             from backend.services.config_service import IMAGES_DIR
 
             path = IMAGES_DIR / path.name

@@ -66,9 +66,27 @@ class MultimodalRetrievalService:
 
     def _encode_query_image(self, image_path: str) -> np.ndarray:
         from pathlib import Path
+        import requests
+        from PIL import Image
+        from io import BytesIO
 
-        normalized = image_path.replace("\\", "/").strip()
-        filename = Path(normalized).name
+        # Normalizar separadores y quitar comillas que puedan venir del frontend
+        normalized = image_path.replace("\\", "/").strip().strip('"').strip("'")
+        
+        if normalized.startswith("http://") or normalized.startswith("https://"):
+            try:
+                response = requests.get(normalized, stream=True)
+                response.raise_for_status()
+                image = Image.open(BytesIO(response.content))
+                return self.clip_embeddings.encode_image(image)
+            except Exception as e:
+                raise ValueError(f"No se pudo cargar la imagen externa: {e}")
+
+        path_obj = Path(normalized)
+        if path_obj.is_file():
+            return self.clip_embeddings.encode_image_path(str(path_obj))
+
+        filename = path_obj.name
         local_path = IMAGES_DIR / filename
         if not local_path.exists():
             raise ValueError(f"No se encontró la imagen local: {filename}")

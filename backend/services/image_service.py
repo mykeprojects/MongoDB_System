@@ -11,12 +11,23 @@ class ImageService:
     def resolve_public_path(self, image_path: str | None) -> str | None:
         if not image_path:
             return None
+        if image_path.startswith("http://") or image_path.startswith("https://"):
+            return image_path
+            
+        path_obj = Path(image_path)
+        if path_obj.is_file():
+            return image_path
+            
         normalized = image_path.replace("\\", "/").strip().lstrip("/")
         if normalized.startswith("data/images/"):
             return normalized
         return f"data/images/{Path(normalized).name}"
 
     def local_file_exists(self, image_path: str | None) -> bool:
+        if image_path and (image_path.startswith("http://") or image_path.startswith("https://")):
+            return False
+        if image_path and Path(image_path).is_file():
+            return True
         public_path = self.resolve_public_path(image_path)
         if not public_path:
             return False
@@ -25,6 +36,8 @@ class ImageService:
     def describe_image_path(self, image_path: str | None) -> str:
         if not image_path:
             return ""
+        if image_path.startswith("http://") or image_path.startswith("https://"):
+            return "imagen externa"
         stem = Path(image_path).stem
         return stem.replace("_", " ").replace("-", " ").strip()
 
