@@ -18,6 +18,7 @@ class RetrievalHit:
         return {
             "collection": self.collection,
             "title": self.title,
+            "text": self.text,
             "score": round(self.score, 4),
             "chunkIndex": self.chunk_index,
             "strategy": self.strategy,

@@ -15,6 +15,8 @@ logger = logging.getLogger("mongodb_setup")
 
 MONGO_URI = os.getenv("MONGO_URI")
 DATABASE_NAME = os.getenv("DATABASE_NAME")
+EMBEDDING_DIMENSIONS = int(os.getenv("EMBEDDING_DIMENSIONS", "384"))
+VECTOR_INDEX_NAME = os.getenv("MONGO_VECTOR_INDEX", "embedding_vector_index")
 
 if not MONGO_URI or not DATABASE_NAME:
     raise ValueError("Las variables MONGO_URI y DATABASE_NAME deben estar definidas en el archivo .env")
@@ -520,7 +522,7 @@ def create_indexes():
         name="idx_embedding_producto_estrategia_chunk"
     )
 
-    # Nota: El índice Vector Search se recomienda crearlo desde Atlas UI o con db.command()
+    # Nota: El índice Vector Search se crea con create_vector_search_indexes()
 
     # Consultas
     db.consultas.create_index([("usuarioId", ASCENDING), ("creadoEn", DESCENDING)])
@@ -540,9 +542,61 @@ def create_indexes():
 
     logger.info("Todos los índices creados (o ya existían)")
 
+
+def create_vector_search_indexes() -> None:
+    """Crea índices de Atlas Vector Search en las colecciones de embeddings."""
+    vector_definition = {
+        "fields": [
+            {
+                "type": "vector",
+                "path": "embedding",
+                "numDimensions": EMBEDDING_DIMENSIONS,
+                "similarity": "cosine",
+            },
+            {"type": "filter", "path": "activo"},
+            {"type": "filter", "path": "estrategiaChunking"},
+        ]
+    }
+
+    for collection_name in ("embedding_normatividad", "embedding_productos"):
+        try:
+            db.command(
+                {
+                    "createSearchIndexes": collection_name,
+                    "indexes": [
+                        {
+                            "name": VECTOR_INDEX_NAME,
+                            "type": "vectorSearch",
+                            "definition": vector_definition,
+                        }
+                    ],
+                }
+            )
+            logger.info(
+                "Indice vector search '%s' creado o actualizado en %s",
+                VECTOR_INDEX_NAME,
+                collection_name,
+            )
+        except OperationFailure as exc:
+            message = str(exc).lower()
+            if "already exists" in message or getattr(exc, "code", None) in {68, 11000}:
+                logger.info(
+                    "Indice vector search '%s' ya existe en %s",
+                    VECTOR_INDEX_NAME,
+                    collection_name,
+                )
+            else:
+                logger.warning(
+                    "No se pudo crear indice vector search en %s: %s",
+                    collection_name,
+                    exc,
+                )
+
+
 def main() -> None:
     try:
         create_indexes()
+        create_vector_search_indexes()
         logger.info("Setup completado exitosamente")
         logger.info("Base de datos: %s", DATABASE_NAME)
         logger.info("Colecciones creadas/actualizadas con validación e índices")

@@ -1,11 +1,16 @@
+import logging
 import re
 from typing import Any
 
 import numpy as np
+from pymongo.errors import OperationFailure
 
 from backend.models.rag_models import RetrievalHit
+from backend.services.config_service import AppConfig
 from backend.services.database_service import DatabaseService
 from backend.services.embedding_service import EmbeddingService
+
+logger = logging.getLogger(__name__)
 
 
 class RetrievalService:
@@ -14,20 +19,137 @@ class RetrievalService:
         "embedding_productos": ("productoId", "producto"),
     }
 
-    def __init__(self, database: DatabaseService, embeddings: EmbeddingService):
+    def __init__(
+        self,
+        database: DatabaseService,
+        embeddings: EmbeddingService,
+        config: AppConfig,
+    ):
         self.database = database
         self.embeddings = embeddings
+        self.config = config
 
     def search(
         self,
         query: str,
-        limit: int = 4,
-        strategy: str | None = "semantico",
+        limit: int | None = None,
+        strategy: str | None = None,
     ) -> list[RetrievalHit]:
         if not query.strip():
             return []
 
+        limit = limit or self.config.retrieval_limit
+        strategy = strategy or self.config.retrieval_strategy
         query_vector = self.embeddings.encode_one(query)
+
+        hits = self._search_with_vector_search(query_vector, limit, strategy)
+        if hits:
+            logger.debug(
+                "Vector search devolvio %s hits (top score=%.4f)",
+                len(hits),
+                hits[0].score,
+            )
+            return hits
+
+        logger.warning(
+            "Vector search no devolvio resultados; usando busqueda local por similitud coseno."
+        )
+        hits = self._search_with_cosine_similarity(query_vector, limit, strategy)
+        if hits:
+            return hits
+
+        return self._fallback_keyword_search(query, limit)
+
+    def _search_with_vector_search(
+        self,
+        query_vector: np.ndarray,
+        limit: int,
+        strategy: str,
+    ) -> list[RetrievalHit]:
+        hits: list[RetrievalHit] = []
+
+        for collection, (resource_field, resource_type) in self.EMBEDDING_COLLECTIONS.items():
+            try:
+                collection_hits = self._vector_search_collection(
+                    collection=collection,
+                    resource_field=resource_field,
+                    resource_type=resource_type,
+                    query_vector=query_vector,
+                    limit=limit,
+                    strategy=strategy,
+                )
+                hits.extend(collection_hits)
+            except OperationFailure as exc:
+                logger.warning(
+                    "Vector search fallo en coleccion %s: %s",
+                    collection,
+                    exc,
+                )
+                return []
+
+        hits = sorted(hits, key=lambda hit: hit.score, reverse=True)[:limit]
+        return hits
+
+    def _vector_search_collection(
+        self,
+        collection: str,
+        resource_field: str,
+        resource_type: str,
+        query_vector: np.ndarray,
+        limit: int,
+        strategy: str,
+    ) -> list[RetrievalHit]:
+        filter_query: dict[str, Any] = {"activo": {"$eq": True}}
+        if strategy in {"frases", "semantico"}:
+            filter_query["estrategiaChunking"] = {"$eq": strategy}
+
+        pipeline: list[dict[str, Any]] = [
+            {
+                "$vectorSearch": {
+                    "index": self.config.vector_index_name,
+                    "path": "embedding",
+                    "queryVector": query_vector.tolist(),
+                    "numCandidates": max(limit * 20, 100),
+                    "limit": limit,
+                    "filter": filter_query,
+                }
+            },
+            {
+                "$project": {
+                    "titulo": 1,
+                    "texto": 1,
+                    "estrategiaChunking": 1,
+                    "chunkIndex": 1,
+                    resource_field: 1,
+                    "score": {"$meta": "vectorSearchScore"},
+                }
+            },
+        ]
+
+        hits: list[RetrievalHit] = []
+        for document in self.database.db[collection].aggregate(pipeline):
+            resource_id = str(document.get(resource_field, ""))
+            hits.append(
+                RetrievalHit(
+                    collection=collection,
+                    title=str(document.get("titulo", "")),
+                    text=str(document.get("texto", "")),
+                    score=float(document.get("score", 0.0)),
+                    chunk_index=int(document.get("chunkIndex", 0)),
+                    strategy=str(document.get("estrategiaChunking", "")),
+                    resource_id=resource_id,
+                    resource_type=resource_type,
+                    metadata={resource_field: resource_id},
+                )
+            )
+        return hits
+
+    def _search_with_cosine_similarity(
+        self,
+        query_vector: np.ndarray,
+        limit: int,
+        strategy: str,
+    ) -> list[RetrievalHit]:
         hits: list[RetrievalHit] = []
 
         for collection, (resource_field, resource_type) in self.EMBEDDING_COLLECTIONS.items():
@@ -67,11 +189,7 @@ class RetrievalService:
                     )
                 )
 
-        hits = sorted(hits, key=lambda hit: hit.score, reverse=True)[:limit]
-        if hits:
-            return hits
-
-        return self._fallback_keyword_search(query, limit)
+        return sorted(hits, key=lambda hit: hit.score, reverse=True)[:limit]
 
     def get_product_image(self, product_id: str | None) -> str | None:
         if not product_id:

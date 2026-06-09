@@ -35,7 +35,7 @@ def create_app() -> Flask:
         embeddings = EmbeddingService(config.embedding_model)
         logger.info("✓ EmbeddingService initialized")
         
-        retrieval = RetrievalService(database, embeddings)
+        retrieval = RetrievalService(database, embeddings, config)
         logger.info("✓ RetrievalService initialized")
         
         images = ImageService()

@@ -29,10 +29,21 @@ def chat():
 @chat_blueprint.get("/health")
 def health():
     database = current_app.config["DATABASE_SERVICE"]
+    config = current_app.config["APP_CONFIG"]
     try:
         database.ping()
         mongo = "ok"
     except Exception as exc:
         mongo = f"error: {exc}"
 
-    return jsonify({"status": "ok", "mongo": mongo}), 200
+    return jsonify(
+        {
+            "status": "ok",
+            "mongo": mongo,
+            "groq": "configured" if config.groq_api_key else "missing_api_key",
+            "groqModel": config.groq_model,
+            "retrievalLimit": config.retrieval_limit,
+            "retrievalStrategy": config.retrieval_strategy,
+            "vectorIndex": config.vector_index_name,
+        }
+    ), 200
