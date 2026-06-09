@@ -29,6 +29,7 @@ def create_app() -> Flask:
 
     logger.info("Initializing services...")
     try:
+        #cada que ejecutamos un servicio logueamos para verificar su actividad
         database = DatabaseService(config)
         logger.info("✓ DatabaseService initialized")
         

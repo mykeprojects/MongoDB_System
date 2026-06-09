@@ -1,7 +1,6 @@
 from dataclasses import dataclass
 from typing import Any
-
-
+#modela los resultados de las busquedas en la base de datos (hit) -> (resultado)
 @dataclass
 class RetrievalHit:
     collection: str
@@ -26,7 +25,7 @@ class RetrievalHit:
             "resourceType": self.resource_type,
         }
 
-
+#soporte para resultados de busqueda que son imagenes
 @dataclass
 class ImageMatch:
     path: str
