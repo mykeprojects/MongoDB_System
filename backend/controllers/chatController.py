@@ -7,7 +7,7 @@ logger = logging.getLogger(__name__)
 
 chat_blueprint = Blueprint("chat", __name__, url_prefix="/api")
 
-
+#api chat -> punto de entrada a las consultas del usuario.
 @chat_blueprint.post("/chat")
 def chat():
     try:
@@ -15,6 +15,7 @@ def chat():
         dto = ChatRequestDTO.from_payload(request.get_json(silent=True))
         logger.debug(f"Created DTO: message={dto.message}, image_path={dto.image_path}")
         
+        #gestiona la respuesta del servicio de chat con handle_chat() por medio de este se procesan los demas servicios
         response = current_app.config["CHAT_SERVICE"].handle_chat(dto)
         logger.debug(f"Chat service returned: {response}")
         return jsonify(response.to_dict()), 200
@@ -25,7 +26,7 @@ def chat():
         logger.exception("Error procesando /api/chat")
         return jsonify({"message": f"Error interno del RAG: {exc}"}), 500
 
-
+#este endpoint verifica el estado de la base de datos y la configuracion del servicio, es util para monitoreo y debugging.
 @chat_blueprint.get("/health")
 def health():
     database = current_app.config["DATABASE_SERVICE"]
