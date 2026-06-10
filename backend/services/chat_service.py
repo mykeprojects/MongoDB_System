@@ -65,14 +65,13 @@ class ChatService:
 
         if mode == "text-to-text":
             multimodal_hits = self.multimodal.search_text_to_text(query, limit=limit)
-            if multimodal_hits:
-                return multimodal_hits, MultimodalRetrievalService.to_retrieval_hits(multimodal_hits)
             rag_hits = self.retrieval.search(
                 query=query,
                 limit=limit,
                 strategy=self.config.retrieval_strategy,
             )
-            return [], rag_hits
+            merged_hits = self._merge_text_hits(multimodal_hits, rag_hits, limit)
+            return multimodal_hits, merged_hits
 
         if mode == "text-to-image":
             multimodal_hits = self.multimodal.search_text_to_image(query or request.message, limit=limit)
@@ -84,6 +83,16 @@ class ChatService:
 
         multimodal_hits = self.multimodal.search_image_to_image(request.image_path or "", limit=limit)
         return multimodal_hits, MultimodalRetrievalService.to_retrieval_hits(multimodal_hits)
+
+    @staticmethod
+    def _merge_text_hits(
+        multimodal_hits: list[MultimodalHit],
+        rag_hits: list[RetrievalHit],
+        limit: int,
+    ) -> list[RetrievalHit]:
+        multimodal_as_retrieval = MultimodalRetrievalService.to_retrieval_hits(multimodal_hits)
+        combined = multimodal_as_retrieval + rag_hits
+        return sorted(combined, key=lambda hit: hit.score, reverse=True)[:limit]
 
     def _detect_mode(self, request: ChatRequestDTO) -> str:
         if request.image_path and request.want_image_response:
