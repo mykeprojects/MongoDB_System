@@ -9,3 +9,6 @@ __pycache__/
 
 # Archivos de configuración local
 .env
+
+.vscode/
+vscode/
